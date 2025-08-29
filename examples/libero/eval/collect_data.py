@@ -12,7 +12,9 @@ import numpy as np
 from openpi_client import image_tools
 from openpi_client import websocket_client_policy as _websocket_client_policy
 import tqdm
+import h5py
 import tyro
+import os
 
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
 LIBERO_ENV_RESOLUTION = 256  # resolution used to render training data
@@ -23,7 +25,7 @@ class Args:
     #################################################################################################################
     # Model server parameters
     #################################################################################################################
-    host: str = "neu325"#"0.0.0.0"
+    host: str = "0.0.0.0"#"0.0.0.0"
     port: int = 8000
     resize_size: int = 224
     replan_steps: int = 5
@@ -32,17 +34,21 @@ class Args:
     # LIBERO environment-specific parameters
     #################################################################################################################
     task_suite_name: str = (
-        "libero_spatial"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
+        "libero_90"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     )
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
-    num_trials_per_task: int = 50  # Number of rollouts per task
+    num_trials_per_task: int = 10 #50  # Number of rollouts per task
 
     #################################################################################################################
     # Utils
     #################################################################################################################
-    video_out_path: str = "data/libero/videos"  # Path to save videos
-
+    # video_out_path: str = "data/libero/0828/videos"  # Path to save videos
+    # trajectory_out_path: str = "data/libero/0828/trajectories"  # Path to save trajectories
+    basepath: str = "/n/fs/iromdata/wmdata/libero"
+    expname: str = "0828-test0"  # Experiment name (used for saving videos)
     seed: int = 7  # Random Seed (for reproducibility)
+
+    save_video: bool = False
 
 
 def eval_libero(args: Args) -> None:
@@ -54,8 +60,17 @@ def eval_libero(args: Args) -> None:
     task_suite = benchmark_dict[args.task_suite_name]()
     num_tasks_in_suite = task_suite.n_tasks
     logging.info(f"Task suite: {args.task_suite_name}")
+    
+    # video_out_path = f"data/libero/{args.expname}/videos"
+    # trajectory_out_path = f"data/libero/{args.expname}/trajectories"
+    
+    video_out_path = f"{args.basepath}/{args.expname}/videos"
+    trajectory_out_path = f"{args.basepath}/{args.expname}/trajectories"
+    info_out_path = f"{args.basepath}/{args.expname}/info.txt"
 
-    pathlib.Path(args.video_out_path).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(video_out_path).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(trajectory_out_path).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(info_out_path).touch()
 
     if args.task_suite_name == "libero_spatial":
         max_steps = 220  # longest training demo has 193 steps
@@ -77,6 +92,11 @@ def eval_libero(args: Args) -> None:
     for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
         # Get task
         task = task_suite.get_task(task_id)
+        print("task = ", task.name)
+        
+        hdf5_path = os.path.join(trajectory_out_path, f"traj_{task.name}.hdf5")
+        f = h5py.File(hdf5_path, "w")
+        grp = f.create_group("data")
 
         # Get default LIBERO initial states
         initial_states = task_suite.get_task_init_states(task_id)
@@ -84,6 +104,7 @@ def eval_libero(args: Args) -> None:
         # Initialize LIBERO environment and task description
         env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed)
 
+            
         # Start episodes
         task_episodes, task_successes = 0, 0
         for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
@@ -99,6 +120,13 @@ def eval_libero(args: Args) -> None:
             # Setup
             t = 0
             replay_images = []
+            # data to save
+            actions = []
+            gripper_states = []
+            ee_states = []
+            agentview_images = []
+            eye_in_hand_images = []
+            dones = []
 
             logging.info(f"Starting episode {task_episodes+1}...")
             while t < max_steps + args.num_steps_wait:
@@ -122,7 +150,8 @@ def eval_libero(args: Args) -> None:
                     )
 
                     # Save preprocessed image for replay video
-                    replay_images.append(img)
+                    if args.save_video:
+                        replay_images.append(img)
 
                     if not action_plan:
                         # Finished executing previous action chunk -- compute new chunk
@@ -151,11 +180,26 @@ def eval_libero(args: Args) -> None:
 
                     # Execute action in environment
                     obs, reward, done, info = env.step(action.tolist())
+                    
+                    actions.append(action.tolist())
+                    gripper_states.append(obs["robot0_gripper_qpos"])
+                    ee_states.append(
+                        np.hstack(
+                            (
+                                obs["robot0_eef_pos"],
+                                _quat2axisangle(obs["robot0_eef_quat"]),
+                            )
+                        )
+                    )
+                    agentview_images.append(obs["agentview_image"])
+                    eye_in_hand_images.append(obs["robot0_eye_in_hand_image"])
                     if done:
                         task_successes += 1
                         total_successes += 1
+                        dones.append(1)
                         break
                     t += 1
+                    dones.append(0)
 
                 except Exception as e:
                     logging.error(f"Caught exception: {e}")
@@ -167,28 +211,51 @@ def eval_libero(args: Args) -> None:
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
-            imageio.mimwrite(
-                pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_{suffix}.mp4",
-                [np.asarray(x) for x in replay_images],
-                fps=10,
+            
+            if args.save_video:
+                imageio.mimwrite(
+                    pathlib.Path(video_out_path) / f"rollout_{task_segment}_ep{episode_idx}_{suffix}.mp4",
+                    [np.asarray(x) for x in replay_images],
+                    fps=20,
+                )
+            
+            # save data
+            ep_data_grp = grp.create_group("demo_{}".format(episode_idx))
+            obs_grp = ep_data_grp.create_group("obs")
+            obs_grp.create_dataset(
+                "gripper_states", data=np.stack(gripper_states, axis=0)
             )
+            obs_grp.create_dataset("ee_states", data=np.stack(ee_states, axis=0))
+            ep_data_grp.create_dataset("actions", data=actions)
+            ep_data_grp.create_dataset("dones", data=dones)
+            obs_grp.create_dataset("agentview_rgb", data=np.stack(agentview_images, axis=0))
+            obs_grp.create_dataset("eye_in_hand_rgb", data=np.stack(eye_in_hand_images, axis=0))
 
             # Log current results
             logging.info(f"Success: {done}")
             logging.info(f"# episodes completed so far: {total_episodes}")
             logging.info(f"# successes: {total_successes} ({total_successes / total_episodes * 100:.1f}%)")
 
+        task_success_rate = float(task_successes) / float(task_episodes) if task_episodes > 0 else 0.0
+        current_total_success_rate = float(total_successes) / float(total_episodes) if total_episodes > 0 else 0.0
+        
         # Log final results
         logging.info(f"Current task success rate: {float(task_successes) / float(task_episodes)}")
-        logging.info(f"Current total success rate: {float(total_successes) / float(total_episodes)}")
+
+        with open(info_out_path, "a") as f:
+            f.write(f"Task={task_id}, desp={task.name}")
+            f.write(f"Current task success rate: {task_success_rate} ({task_successes}/{task_episodes})\n")
 
     logging.info(f"Total success rate: {float(total_successes) / float(total_episodes)}")
     logging.info(f"Total episodes: {total_episodes}")
+    with open(info_out_path, "a") as f:
+        f.write(f"Total success rate: {current_total_success_rate} ({total_successes}/{total_episodes})\n")
 
 
 def _get_libero_env(task, resolution, seed):
     """Initializes and returns the LIBERO environment, along with the task description."""
     task_description = task.language
+    # task_description = "do nothing and don't move"
     task_bddl_file = pathlib.Path(get_libero_path("bddl_files")) / task.problem_folder / task.bddl_file
     env_args = {"bddl_file_name": task_bddl_file, "camera_heights": resolution, "camera_widths": resolution}
     env = OffScreenRenderEnv(**env_args)
