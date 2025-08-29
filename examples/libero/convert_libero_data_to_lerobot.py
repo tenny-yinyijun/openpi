@@ -25,7 +25,7 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import tensorflow_datasets as tfds
 import tyro
 
-REPO_NAME = "your_hf_username/libero"  # Name of the output dataset, also used for the Hugging Face Hub
+REPO_NAME = "tennyyin/libero"  # Name of the output dataset, also used for the Hugging Face Hub
 RAW_DATASET_NAMES = [
     "libero_10_no_noops",
     "libero_goal_no_noops",
@@ -76,7 +76,9 @@ def main(data_dir: str, *, push_to_hub: bool = False):
     # Loop over raw Libero datasets and write episodes to the LeRobot dataset
     # You can modify this for your own data format
     for raw_dataset_name in RAW_DATASET_NAMES:
+        print("dataset name = ", raw_dataset_name)
         raw_dataset = tfds.load(raw_dataset_name, data_dir=data_dir, split="train")
+        print(len(raw_dataset))
         for episode in raw_dataset:
             for step in episode["steps"].as_numpy_iterator():
                 dataset.add_frame(

@@ -50,7 +50,7 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
     """
     # Don't use fsspec to parse the url to avoid unnecessary connection to the remote filesystem.
     parsed = urllib.parse.urlparse(url)
-
+    
     # Short circuit if this is a local path.
     if parsed.scheme == "":
         path = pathlib.Path(url)
@@ -88,7 +88,7 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
             logger.info(f"Downloading {url} to {local_path}")
             scratch_path = local_path.with_suffix(".partial")
             _download_fsspec(url, scratch_path, **kwargs)
-
+            
             shutil.move(scratch_path, local_path)
             _ensure_permissions(local_path)
 
@@ -98,7 +98,6 @@ def maybe_download(url: str, *, force_download: bool = False, **kwargs) -> pathl
             f"Please try again after removing the cached data using: `rm -rf {local_path}*`"
         )
         raise PermissionError(msg) from e
-
     return local_path
 
 

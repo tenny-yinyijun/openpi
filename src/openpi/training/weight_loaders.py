@@ -98,5 +98,4 @@ def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex:
     for k in {k for k in flat_ref if pattern.fullmatch(k)}:
         if k not in result:
             result[k] = flat_ref[k]
-
     return flax.traverse_util.unflatten_dict(result, sep="/")

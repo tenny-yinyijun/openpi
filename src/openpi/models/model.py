@@ -292,13 +292,14 @@ def restore_params(
         The restored params.
     """
     params_path = pathlib.Path(params_path).resolve()
+    
     if not params_path.exists():
         raise FileNotFoundError(f"Model params not found at: {params_path}")
-
+    
     if restore_type is jax.Array and sharding is None:
         mesh = jax.sharding.Mesh(jax.devices(), ("x",))
         sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
-
+    
     with ocp.PyTreeCheckpointer() as ckptr:
         metadata = ckptr.metadata(params_path)
         item = {"params": metadata["params"]}
@@ -312,7 +313,7 @@ def restore_params(
                 ),
             ),
         )["params"]
-
+        
     # If the params were saved with `save_state` during openpi training, every key path will end with "value", which is
     # added by `nnx.State`. We remove the "value" suffix here and always return what NNX calls a "pure dict".
     flat_params = traverse_util.flatten_dict(params)
