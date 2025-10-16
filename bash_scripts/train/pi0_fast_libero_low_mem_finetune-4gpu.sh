@@ -16,12 +16,15 @@ source ~/.bashrc
 
 cd /n/fs/tom-project/papers/openpi
 
+###
+export EXPERIMENT_CONFIG="pi0_fast_libero90_low_mem_finetune"
+
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 export OMP_NUM_THREADS=1
 export PYTHONUNBUFFERED=1
 
 export RUN_DATETIME=$(date +%Y%m%d-%H%M%S)
-export EXPERIMENT_NAME="$RUN_DATETIME-4gpu"
+export EXPERIMENT_NAME="$EXPERIMENT_CONFIG-$RUN_DATETIME-4gpu"
 
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi0_fast_libero_low_mem_finetune --exp-name=$EXPERIMENT_NAME --overwrite
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py $EXPERIMENT_CONFIG --exp-name=$EXPERIMENT_NAME --overwrite
