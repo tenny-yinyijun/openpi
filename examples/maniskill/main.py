@@ -34,7 +34,7 @@ class Args:
     env_id: str = "PickPlaceYCBStaticCamera-v1"
     num_evals: int = 5
     task_description: str = "Put the banana into the bowl"
-    max_timestep: int = 100  # Number of rollouts per task
+    max_timestep: int = 300  # Number of rollouts per task
 
     #################################################################################################################
     # Utils
@@ -144,6 +144,8 @@ def eval_maniskill(args: Args) -> None:
             [np.asarray(x) for x in replay_images],
             fps=10,
         )
+        
+        print(f"saved video to {pathlib.Path(args.video_out_path) / f'rollout_{eval_idx}_{suffix}.mp4'}")
 
         # Log current results
         logging.info(f"Success: {done}")
@@ -155,7 +157,7 @@ def _get_maniskill_env(env_id):
         obs_mode="rgb",
         control_mode="pd_joint_vel",
         render_mode="rgb_array",
-        sensor_configs=dict(shader_pack="default"),  # default, rt
+        sensor_configs=dict(shader_pack="rt"),  # default, rt
         human_render_camera_configs=dict(shader_pack="default"),
         viewer_camera_configs=dict(shader_pack="default"),
         sim_backend="auto" # auto, cpu, gpu

@@ -45,10 +45,13 @@ class Args:
     # video_out_path: str = "data/libero/0828/videos"  # Path to save videos
     # trajectory_out_path: str = "data/libero/0828/trajectories"  # Path to save trajectories
     basepath: str = "/n/fs/iromdata/wmdata/libero"
+    run_keyword: str = "test"  # Keyword for the run (used for saving videos)
     expname: str = "0828-test0"  # Experiment name (used for saving videos)
     seed: int = 7  # Random Seed (for reproducibility)
 
+    play_data: bool = False
     save_video: bool = False
+    description: str = "Do something"
 
 
 def eval_libero(args: Args) -> None:
@@ -64,9 +67,9 @@ def eval_libero(args: Args) -> None:
     # video_out_path = f"data/libero/{args.expname}/videos"
     # trajectory_out_path = f"data/libero/{args.expname}/trajectories"
     
-    video_out_path = f"{args.basepath}/{args.expname}/videos"
-    trajectory_out_path = f"{args.basepath}/{args.expname}/trajectories"
-    info_out_path = f"{args.basepath}/{args.expname}/info.txt"
+    video_out_path = f"{args.basepath}/{args.run_keyword}/{args.expname}/videos"
+    trajectory_out_path = f"{args.basepath}/{args.run_keyword}/{args.expname}/trajectories"
+    info_out_path = f"{args.basepath}/{args.run_keyword}/{args.expname}/info.txt"
 
     pathlib.Path(video_out_path).mkdir(parents=True, exist_ok=True)
     pathlib.Path(trajectory_out_path).mkdir(parents=True, exist_ok=True)
@@ -103,6 +106,9 @@ def eval_libero(args: Args) -> None:
 
         # Initialize LIBERO environment and task description
         env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed)
+        
+        if args.play_data:
+            task_description = args.description
 
             
         # Start episodes

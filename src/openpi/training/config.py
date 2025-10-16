@@ -558,7 +558,7 @@ _CONFIGS = [
         # dataset. For your own dataset, you can change the repo_id to point to your dataset.
         # Also modify the DataConfig to use the new config you made for your dataset above.
         data=LeRobotLiberoDataConfig(
-            repo_id="physical-intelligence/libero",
+            repo_id="tennyyin/libero",
             base_config=DataConfig(
                 # This flag determines whether we load the prompt (i.e. the task instruction) from the
                 # ``task`` field in the LeRobot dataset. If set to True, the prompt will show up in
@@ -572,17 +572,20 @@ _CONFIGS = [
         # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
         # Check the base TrainConfig class for a full list of available hyperparameters.
         num_train_steps=30_000,
+        fsdp_devices=2,
     ),
     TrainConfig(
         name="pi0_libero_low_mem_finetune",
         # Here is an example of loading a pi0 model for LoRA fine-tuning.
         model=pi0.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotLiberoDataConfig(
-            repo_id="physical-intelligence/libero",
+            repo_id="tennyyin/libero",
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        num_train_steps=30_000,
+        num_train_steps=90_000,
+        save_interval=5000,
+        keep_period=5000,
         # The freeze filter defines which parameters should be frozen during training.
         # We have a convenience function in the model config that returns the default freeze filter
         # for the given model config for LoRA finetuning. Just make sure it matches the model config
@@ -614,6 +617,7 @@ _CONFIGS = [
         # Note that we load the pi0-FAST base model checkpoint here.
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_fast_base/params"),
         num_train_steps=30_000,
+        fsdp_devices=2,
     ),
     TrainConfig(
         name="pi0_fast_libero_low_mem_finetune",
@@ -628,9 +632,79 @@ _CONFIGS = [
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_fast_base/params"),
-        num_train_steps=30_000,
-        save_interval=500,
-        keep_period=500,
+        # num_train_steps=30_000,
+        # save_interval=500,
+        # keep_period=500,
+        num_train_steps=90_000,
+        save_interval=5000,
+        keep_period=5000,
+        # Again, make sure to match the model config above when extracting the freeze filter
+        # that specifies which parameters should be frozen during LoRA finetuning.
+        freeze_filter=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+    ),
+    
+    # libero 90
+    TrainConfig(
+        # Change the name to reflect your model and dataset.
+        name="pi0_libero90",
+        # Here you define the model config -- In this example we use pi0 as the model
+        # architecture and perform *full* finetuning. in the examples below we show how to modify
+        # this to perform *low-memory* (LORA) finetuning and use pi0-FAST as an alternative architecture.
+        model=pi0.Pi0Config(),
+        # Here you define the dataset you are training on. In this example we use the Libero
+        # dataset. For your own dataset, you can change the repo_id to point to your dataset.
+        # Also modify the DataConfig to use the new config you made for your dataset above.
+        data=LeRobotLiberoDataConfig(
+            repo_id="tennyyin/libero90",
+            base_config=DataConfig(
+                # This flag determines whether we load the prompt (i.e. the task instruction) from the
+                # ``task`` field in the LeRobot dataset. If set to True, the prompt will show up in
+                # a field called ``prompt`` in the input dict. The recommended setting is True.
+                prompt_from_task=True,
+            ),
+        ),
+        # Here you define which pre-trained checkpoint you want to load to initialize the model.
+        # This should match the model config you chose above -- i.e. in this case we use the pi0 base model.
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
+        # Check the base TrainConfig class for a full list of available hyperparameters.
+        save_interval=2000,
+        keep_period=2000,
+        num_train_steps=100_000,
+        fsdp_devices=2,
+    ),
+    TrainConfig(
+        name="pi0_fast_libero90",
+        model=pi0_fast.Pi0FASTConfig(action_dim=7, action_horizon=10, max_token_len=180),
+        data=LeRobotLiberoDataConfig(
+            repo_id="tennyyin/libero90",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_fast_base/params"),
+        save_interval=2000,
+        keep_period=2000,
+        num_train_steps=100_000,
+    ), 
+    TrainConfig(
+        name="pi0_fast_libero90_low_mem_finetune",
+        # Here is an example of loading a pi0-FAST model for LoRA finetuning.
+        # For setting action_dim, action_horizon, and max_token_len, see the comments above.
+        model=pi0_fast.Pi0FASTConfig(
+            action_dim=7, action_horizon=10, max_token_len=180, paligemma_variant="gemma_2b_lora"
+        ),
+        data=LeRobotLiberoDataConfig(
+            # repo_id="physical-intelligence/libero",
+            repo_id="tennyyin/libero90",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_fast_base/params"),
+        save_interval=2000,
+        keep_period=2000,
+        num_train_steps=100_000,
         # Again, make sure to match the model config above when extracting the freeze filter
         # that specifies which parameters should be frozen during LoRA finetuning.
         freeze_filter=pi0_fast.Pi0FASTConfig(

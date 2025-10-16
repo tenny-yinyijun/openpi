@@ -3,7 +3,7 @@
 #SBATCH --nodes=1                    # Number of nodes
 #SBATCH --ntasks=1                   # Number of tasks (processes)
 #SBATCH --cpus-per-task=8            # Number of CPU cores per task
-#SBATCH --mem=80G                    # Memory per node
+#SBATCH --mem=160G                    # Memory per node
 #SBATCH --time=10:00:00              # Time limit (hh:mm:ss)
 #SBATCH --output=slurm_outputs/%x/out_log_%x_%j.out     ## Output File
 

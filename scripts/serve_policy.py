@@ -17,6 +17,7 @@ class EnvMode(enum.Enum):
     ALOHA = "aloha"
     ALOHA_SIM = "aloha_sim"
     DROID = "droid"
+    DROID05 = "droid05"
     LIBERO = "libero"
 
 
@@ -68,6 +69,10 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.DROID: Checkpoint(
         config="pi0_fast_droid",
         dir="gs://openpi-assets/checkpoints/pi0_fast_droid",
+    ),
+    EnvMode.DROID05: Checkpoint(
+        config="pi05_droid",
+        dir="gs://openpi-assets/checkpoints/pi05_droid",
     ),
     EnvMode.LIBERO: Checkpoint(
         config="pi0_fast_libero",

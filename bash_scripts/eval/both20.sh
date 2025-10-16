@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=eval20k
+#SBATCH --job-name=eval2v1
 #SBATCH --nodes=1 
 #SBATCH --gres=gpu:2
 #SBATCH --ntasks=2                   # Number of tasks (processes)
@@ -15,7 +15,7 @@
 # -------------------------
 
 policy_ckpt=20000
-
+task_suite=libero_10
 
 # -------------------------
 
@@ -35,8 +35,10 @@ export PYTHONUNBUFFERED=1
   CUDA_VISIBLE_DEVICES=0 \
     python examples/libero/eval/collect_data.py \
       --args.host $host \
-      --args.num_trials_per_task 50 \
-      --args.expname "0828-rollout-${policy_ckpt}" \
+      --args.task_suite_name $task_suite \
+      --args.num_trials_per_task 10 \
+      --args.save_video \
+      --args.expname "0828-rollout-${task_suite}-${policy_ckpt}-vid10" \
 ) &> slurm_outputs/${SLURM_JOB_NAME}/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_sim.out &
 
 # -------------------------

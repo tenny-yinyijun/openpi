@@ -25,12 +25,13 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import tensorflow_datasets as tfds
 import tyro
 
-REPO_NAME = "tennyyin/libero"  # Name of the output dataset, also used for the Hugging Face Hub
+REPO_NAME = "tennyyin/libero90"  # Name of the output dataset, also used for the Hugging Face Hub
 RAW_DATASET_NAMES = [
-    "libero_10_no_noops",
-    "libero_goal_no_noops",
-    "libero_object_no_noops",
-    "libero_spatial_no_noops",
+    "liber_o90",
+    # "libero_10_no_noops",
+    # "libero_goal_no_noops",
+    # "libero_object_no_noops",
+    # "libero_spatial_no_noops",
 ]  # For simplicity we will combine multiple Libero datasets into one training dataset
 
 
