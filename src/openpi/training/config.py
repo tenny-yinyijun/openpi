@@ -744,35 +744,35 @@ _CONFIGS = [
     ),
     
     # libero 90
-    TrainConfig(
-        # Change the name to reflect your model and dataset.
-        name="pi0_libero90",
-        # Here you define the model config -- In this example we use pi0 as the model
-        # architecture and perform *full* finetuning. in the examples below we show how to modify
-        # this to perform *low-memory* (LORA) finetuning and use pi0-FAST as an alternative architecture.
-        model=pi0.Pi0Config(),
-        # Here you define the dataset you are training on. In this example we use the Libero
-        # dataset. For your own dataset, you can change the repo_id to point to your dataset.
-        # Also modify the DataConfig to use the new config you made for your dataset above.
-        data=LeRobotLiberoDataConfig(
-            repo_id="tennyyin/libero90",
-            base_config=DataConfig(
-                # This flag determines whether we load the prompt (i.e. the task instruction) from the
-                # ``task`` field in the LeRobot dataset. If set to True, the prompt will show up in
-                # a field called ``prompt`` in the input dict. The recommended setting is True.
-                prompt_from_task=True,
-            ),
-        ),
-        # Here you define which pre-trained checkpoint you want to load to initialize the model.
-        # This should match the model config you chose above -- i.e. in this case we use the pi0 base model.
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
-        # Check the base TrainConfig class for a full list of available hyperparameters.
-        save_interval=2000,
-        keep_period=2000,
-        num_train_steps=100_000,
-        fsdp_devices=2,
-    ),
+    # TrainConfig(
+    #     # Change the name to reflect your model and dataset.
+    #     name="pi0_libero90",
+    #     # Here you define the model config -- In this example we use pi0 as the model
+    #     # architecture and perform *full* finetuning. in the examples below we show how to modify
+    #     # this to perform *low-memory* (LORA) finetuning and use pi0-FAST as an alternative architecture.
+    #     model=pi0.Pi0Config(),
+    #     # Here you define the dataset you are training on. In this example we use the Libero
+    #     # dataset. For your own dataset, you can change the repo_id to point to your dataset.
+    #     # Also modify the DataConfig to use the new config you made for your dataset above.
+    #     data=LeRobotLiberoDataConfig(
+    #         repo_id="tennyyin/libero90",
+    #         base_config=DataConfig(
+    #             # This flag determines whether we load the prompt (i.e. the task instruction) from the
+    #             # ``task`` field in the LeRobot dataset. If set to True, the prompt will show up in
+    #             # a field called ``prompt`` in the input dict. The recommended setting is True.
+    #             prompt_from_task=True,
+    #         ),
+    #     ),
+    #     # Here you define which pre-trained checkpoint you want to load to initialize the model.
+    #     # This should match the model config you chose above -- i.e. in this case we use the pi0 base model.
+    #     weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+    #     # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
+    #     # Check the base TrainConfig class for a full list of available hyperparameters.
+    #     save_interval=2000,
+    #     keep_period=2000,
+    #     num_train_steps=100_000,
+    #     fsdp_devices=2,
+    # ),
     TrainConfig(
         name="pi0_fast_libero90",
         model=pi0_fast.Pi0FASTConfig(action_dim=7, action_horizon=10, max_token_len=180),
