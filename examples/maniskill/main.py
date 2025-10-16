@@ -34,7 +34,7 @@ class Args:
     env_id: str = "PickPlaceYCBStaticCamera-v1"
     num_evals: int = 5
     task_description: str = "Put the banana into the bowl"
-    max_timestep: int = 300  # Number of rollouts per task
+    max_timestep: int = 200  # Number of rollouts per task
 
     #################################################################################################################
     # Utils
