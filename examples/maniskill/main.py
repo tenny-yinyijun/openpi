@@ -113,10 +113,10 @@ def eval_maniskill(args: Args) -> None:
                 action = action_plan.popleft()
                 
                 obs, reward, done, truncated, info = env.step(torch.tensor(action).unsqueeze(0).to(obs["agent"]["qpos"].device))
-                if done:
-                    task_successes += 1
-                    total_successes += 1
-                    break
+                # if done:
+                #     task_successes += 1
+                #     total_successes += 1
+                    # break
                 t += 1
 
 
@@ -128,19 +128,15 @@ def eval_maniskill(args: Args) -> None:
         num_evals += 1
 
         # Save a replay video of the episode
-        suffix = "success" if done else "failure"
+        # suffix = "success" if done else "failure"
         # task_segment = task_description.replace(" ", "_")
         imageio.mimwrite(
-            pathlib.Path(args.video_out_path) / f"{env_id}_rollout_{eval_idx}_{suffix}.mp4",
+            pathlib.Path(args.video_out_path) / f"{env_id}_rollout_{eval_idx}.mp4", #_{suffix}.mp4",
             [np.asarray(x) for x in replay_images],
             fps=10,
         )
 
-        print(f"saved video to {pathlib.Path(args.video_out_path) / f'{env_id}_rollout_{eval_idx}_{suffix}.mp4'}")
-
-        # Log current results
-        logging.info(f"Success: {done}")
-        # logging.info(f"# successes: {total_successes} ({total_successes / num_evals * 100:.1f}%)")
+        print(f"saved video to {pathlib.Path(args.video_out_path) / f'{env_id}_rollout_{eval_idx}.mp4'}")
 
 def _get_maniskill_env(env_id):
     env = gym.make(
