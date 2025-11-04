@@ -1,0 +1,44 @@
+{
+    "policy_checkpoints": {
+        "stack_2000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/2000"
+        },
+        "stack_4000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/4000"
+        },
+        "stack_6000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/6000"
+        },
+        "stack_8000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/8000"
+        },
+        "stack_10000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/10000"
+        },
+        "stack_12000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/12000"
+        },
+        "stack_14000": {        
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/14000"
+        },
+        "stack_16000": {        
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/16000"
+        },
+        "stack_18000": {        
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/18000"
+        },
+        "stack_20000": {
+            "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/20000"
+        }
+    }
+}
