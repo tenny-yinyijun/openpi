@@ -42,6 +42,7 @@ class WebsocketPolicyServer:
             compression=None,
             max_size=None,
             process_request=_health_check,
+            ping_interval=None,  # Disable ping timeout to prevent connection drops during slow inference
         ) as server:
             await server.serve_forever()
 

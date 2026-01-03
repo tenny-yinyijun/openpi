@@ -18,6 +18,7 @@ from openpi_client import websocket_client_policy as _websocket_client_policy
 import tqdm
 import tyro
 import torch
+import h5py
 
 @dataclasses.dataclass
 class Args:
@@ -60,11 +61,13 @@ def eval_maniskill(args: Args) -> None:
 
     pathlib.Path(args.video_out_path).mkdir(parents=True, exist_ok=True)
 
-    # Create output folders for saving raw data
+    # Create h5 file
     if args.save_data:
-        data_videos_folder = pathlib.Path(args.video_out_path) / "videos_three_view_vertical"
+        # data_videos_folder = pathlib.Path(args.video_out_path) / "videos_three_view_vertical"
+        h5py_path = pathlib.Path(args.video_out_path) / "trajectories.h5"
         data_jsons_folder = pathlib.Path(args.video_out_path) / "json"
-        data_videos_folder.mkdir(parents=True, exist_ok=True)
+        # data_videos_folder.mkdir(parents=True, exist_ok=True)
+        trajectory_file = h5py.File(h5py_path, 'w')
         data_jsons_folder.mkdir(parents=True, exist_ok=True)
 
     client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
@@ -137,12 +140,20 @@ def eval_maniskill(args: Args) -> None:
                     agent_state = obs["agent"]["qpos"][0]
                     request_data = {
                         "observation/image": image_tools.resize_with_pad(
-                            agentview_rgb.cpu().numpy(), 180, 320
+                            agentview_rgb.cpu().numpy(), 224, 224
                         ),
-                        "observation/wrist_image": image_tools.resize_with_pad(eyeinhand_rgb.cpu().numpy(), 180, 320),
+                        "observation/wrist_image": image_tools.resize_with_pad(eyeinhand_rgb.cpu().numpy(), 224, 224),
                         "observation/state": agent_state.cpu().numpy(), # 7d
                         "prompt": task_description,
                     }
+                    # request_data = {
+                    #     "observation/image": image_tools.resize_with_pad(
+                    #         agentview_rgb.cpu().numpy(), 180, 320
+                    #     ),
+                    #     "observation/wrist_image": image_tools.resize_with_pad(eyeinhand_rgb.cpu().numpy(), 180, 320),
+                    #     "observation/state": agent_state.cpu().numpy(), # 7d
+                    #     "prompt": task_description,
+                    # }
 
                     # Query model to get action
                     result = client.infer(request_data)
@@ -211,15 +222,21 @@ def eval_maniskill(args: Args) -> None:
         # Save raw data if enabled
         if args.save_data:
             # Save video with raw RGB frames concatenated
-            data_video_path = data_videos_folder / f"{eval_idx}.mp4"
+            # data_video_path = data_videos_folder / f"{eval_idx}.mp4"
             agentview_rgb_frames_array = np.stack(agentview_rgb_frames, axis=0)
             base_camera_2_rgb_frames_array = np.stack(base_camera_2_rgb_frames, axis=0)
             eyeinhand_rgb_frames_array = np.stack(eyeinhand_rgb_frames, axis=0)
+            
+            trajectory_file.create_group(f"episode_{eval_idx}")
+            trajectory_file[f"episode_{eval_idx}/base_camera_1"] = agentview_rgb_frames_array
+            trajectory_file[f"episode_{eval_idx}/base_camera_2"] = base_camera_2_rgb_frames_array
+            trajectory_file[f"episode_{eval_idx}/wrist_camera"] = eyeinhand_rgb_frames_array
+
 
             # Concatenate camera views vertically: base_camera (top), base_camera_2 (middle), hand_camera (bottom) [T, H*3, W, C]
-            obs_rgb = np.concatenate([agentview_rgb_frames_array, base_camera_2_rgb_frames_array, eyeinhand_rgb_frames_array], axis=1).astype(np.uint8)
-            imageio.mimsave(str(data_video_path), obs_rgb, fps=30)
-            print(f"Saved data video to {data_video_path}")
+            # obs_rgb = np.concatenate([agentview_rgb_frames_array, base_camera_2_rgb_frames_array, eyeinhand_rgb_frames_array], axis=1).astype(np.uint8)
+            # imageio.mimsave(str(data_video_path), obs_rgb, fps=30)
+            # print(f"Saved data video to {data_video_path}")
 
             # Save JSON with states and actions
             data_json_path = data_jsons_folder / f"{eval_idx}.json"
@@ -228,8 +245,7 @@ def eval_maniskill(args: Args) -> None:
                 "actions": action_list,
                 "success": episode_success,
                 "steps": t,
-                "env_seed": env_seed,
-                "video_path": str(data_video_path.absolute())
+                "env_seed": env_seed
             }
             with open(data_json_path, 'w') as json_file:
                 json.dump(json_data, json_file, indent=2)

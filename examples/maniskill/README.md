@@ -2,7 +2,7 @@
 
 ## Running Pi in The World Model
 
-Setup (ran only once): Install the following in your world model environment:
+(Ran only once) Setup: Install the following in your world model environment:
 ```bash
 # Install openpi client
 cd path/to/openpi
@@ -18,7 +18,7 @@ We provide one policy checkpoint fine-tuned on the maniskill environment, and on
 ```bash
 # In terminal 1
 conda activate wmenv
-python examples/maniskill/main_wm.py --args.host <node_name>
+python examples/maniskill/main_wm.py --args.video_out_path "data/maniskill/wm/policy4000rollwm" --args.host <node_name>
 
 # In terminal 2
 
@@ -27,7 +27,6 @@ uv run scripts/serve_policy.py policy:checkpoint --policy.config pi0_maniskill_a
 
 # stack
 uv run scripts/serve_policy.py policy:checkpoint --policy.config pi0_maniskill_stack400_pd_joint_pos_lora --policy.dir /n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/14000
-
 ```
 
 ## Running Pi in Maniskill (Single run)
@@ -53,13 +52,15 @@ which python
 
 # if the path is under openpi instead, remove it with something like:
 export PATH=$(echo $PATH | sed -e 's|/path/to/openpi/.venv/bin:||')
-
 ```
 
 ```bash
 # In terminal 2, run:
 ## Running your own checkpoint
 uv run scripts/serve_policy.py policy:checkpoint --policy.config <policy_config_name> --policy.dir <policy_checkpoint_dir> 
+
+## Example
+uv run scripts/serve_policy.py policy:checkpoint --policy.config pi0_maniskill_all_v1_pd_joint_pos_lora --policy.dir /n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_all_v1_pd_joint_pos_lora/20251109-172927-4gpu/45000
 
 ## Running the droid policy
 uv run scripts/serve_policy.py --env DROID
@@ -69,20 +70,23 @@ uv run scripts/serve_policy.py --env DROID
 
 ```bash
 python examples/maniskill/submit_eval_jobs.py \
-    --checkpoints_file examples/maniskill/my_checkpoints.txt \
+    --checkpoints_file examples/maniskill/rollout_checkpoints.txt \
     --output_path /n/fs/tom-project/papers/openpi/examples/maniskill/test_outputs/pi_checkpoints_4000_v2 \
-    --num_evals 50 \
-    --env_id StackCube-v1 \
+    --num_evals 20 \
+    --env_id StackCubeSingleView-v1 \
     --seed 1000
 
-# for data generation
+# for data generation: first generate trajectories
 python examples/maniskill/submit_eval_jobs.py \
     --checkpoints_file examples/maniskill/rollout_checkpoints.txt \
-    --output_path /n/fs/iromdata/video_model_training/maniskill/rollouts \
-    --num_evals 200 \
-    --env_id StackCube-v1 \
-    --seed 1000 \
+    --output_path /n/fs/iromdata/video_model_training/maniskill/1114_stack_env0-100 \
+    --num_evals 100 \
+    --env_id StackCubeSingleView-v1 \
+    --seed 0 \
     --save-data 
+
+# then render videos
+bash examples/maniskill/convert_h5_batch.sh
 ```
 
 ## Finetuning Pi on Maniskill Dataset

@@ -30,6 +30,34 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import tensorflow_datasets as tfds
 import tyro
 
+
+# REPO_NAME = "tennyyin/maniskill-50"
+# MANISKILL_DATASETS = {
+#     "maniskill-50-1": "/n/fs/iromdata/pi_finetune_data/maniskill/StackCubeSingleView-v1/n50_20251112-230942/trajectory.h5"
+# }
+
+# REPO_NAME = "tennyyin/maniskill-100"
+# MANISKILL_DATASETS = {
+#     "maniskill-100-1": "/n/fs/iromdata/pi_finetune_data/maniskill/StackCubeSingleView-v1/n100_20251112-230936/trajectory.h5"
+# }
+
+REPO_NAME = "tennyyin/maniskill-200-nowrist"
+MANISKILL_DATASETS = {
+    "maniskill-200-1": "/n/fs/iromdata/pi_finetune_data/maniskill/StackCubeSingleView-v1/n200_20251112-225941/trajectory.h5"
+}
+
+# REPO_NAME = "tennyyin/mani-all-3600"  # Name of the output dataset, also used for the Hugging Face Hub
+# MANISKILL_DATASETS = {
+#     "PickPlaceDroid-v1-0": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceDroid-v1/n500_20251107-115947/trajectory.h5",
+#     "PickPlaceDroid-v1-1": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceDroid-v1/n500_20251107-123833/trajectory.h5",
+#     "PickPlaceNextDroid-v1-0": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceNextDroid-v1/n500_20251107-120048/trajectory.h5",
+#     "PickPlaceNextDroid-v1-1": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceNextDroid-v1/n500_20251107-123833/trajectory.h5",
+#     "PickPlaceOutDroid-v1-0": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceOutDroid-v1/n300_20251108-000133/trajectory.h5",
+#     "PickPlaceOutDroid-v1-1": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceOutDroid-v1/n500_20251107-123925/trajectory.h5",
+#     "PushObjectDroid-v1-0": "/n/fs/iromdata/pi_finetune_data/maniskill/PushObjectDroid-v1/n400_20251108-000942/trajectory.h5",
+#     "PushObjectDroid-v1-1": "/n/fs/iromdata/pi_finetune_data/maniskill/PushObjectDroid-v1/n400_20251108-000201/trajectory.h5"
+# }
+
 # REPO_NAME = "tennyyin/maniskill-all-jointpos"  # Name of the output dataset, also used for the Hugging Face Hub
 # MANISKILL_DATASETS = {
 #     "PickPlaceDroid-v1": "/n/fs/iromdata/pi_finetune_data/maniskill/PickPlaceDroid-v1/n500_20251021-010733/trajectory.h5",
@@ -43,10 +71,10 @@ import tyro
 #     "StackCube-v1": "/n/fs/iromdata/pi_finetune_data/maniskill/StackCube-v1/n200_20251031-193207/trajectory.h5"
 # }
 
-REPO_NAME = "tennyyin/mani-stack-400"  # Name of the output dataset, also used for the Hugging Face Hub
-MANISKILL_DATASETS = {
-    "StackCube-v1": "/n/fs/iromdata/pi_finetune_data/maniskill/StackCube-v1/n400_20251101-161512/trajectory.h5"
-}
+# REPO_NAME = "tennyyin/mani-stack-400"  # Name of the output dataset, also used for the Hugging Face Hub
+# MANISKILL_DATASETS = {
+#     "StackCube-v1": "/n/fs/iromdata/pi_finetune_data/maniskill/StackCube-v1/n400_20251101-161512/trajectory.h5"
+# }
 
 def resize_image(image, size):
     image = Image.fromarray(image)
@@ -69,12 +97,14 @@ def main():
         features={
             "image": {
                 "dtype": "image",
-                "shape": (180, 320, 3),
+                "shape": (224, 224, 3),
+                # "shape": (180, 320, 3),
                 "names": ["height", "width", "channel"],
             },
             "wrist_image": {
                 "dtype": "image",
-                "shape": (180, 320, 3),
+                "shape": (224, 224, 3),
+                # "shape": (180, 320, 3),
                 "names": ["height", "width", "channel"],
             },
             "state": {
@@ -104,7 +134,9 @@ def main():
             instr = annotations[i]["instruction"]
 
             rgb_base = episode["obs"]["sensor_data"]["base_camera"]["rgb"][:]
-            rgb_wrist = episode["obs"]["sensor_data"]["hand_camera"]["rgb"][:]
+            # rgb_wrist = episode["obs"]["sensor_data"]["hand_camera"]["rgb"][:]
+            # set rgb_wrist to black images since we don't want to use them
+            rgb_wrist = np.zeros_like(rgb_base)
             qpos = episode["obs"]["agent"]["qpos"][:]
             actions = episode["actions"][:]
 

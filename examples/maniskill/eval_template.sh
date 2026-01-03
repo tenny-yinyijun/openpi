@@ -6,7 +6,7 @@
 #SBATCH --mem=120G                    # Memory per node
 #SBATCH --time=72:00:00              # Time limit (hh:mm:ss)
 #SBATCH --output=slurm_outputs/%x/out_log_%x_%j.out     ## Output File
-
+#SBATCH --exclude=neu306
 
 # -------------------------
 # Parameters - These will be set by the submission script
@@ -28,6 +28,10 @@ save_data="${SAVE_DATA:-false}"  # Default to false if not set
 save_eval_video="${SAVE_EVAL_VIDEO:-true}"  # Default to true if not set
 seed="${SEED:-5000}"  # Default to 5000 if not set
 
+# Generate a unique port for this job to avoid conflicts when multiple jobs run on the same node
+# Use SLURM_JOB_ID to generate a port in the range 8000-18000
+port=$((8000 + (SLURM_JOB_ID % 10000)))
+
 # -------------------------
 
 host=$(hostname)
@@ -40,6 +44,7 @@ echo "Number of evaluations: $num_evals"
 echo "Save data: $save_data"
 echo "Save eval video: $save_eval_video"
 echo "Seed: $seed"
+echo "Port: $port"
 
 export PYTHONUNBUFFERED=1
 
@@ -79,6 +84,7 @@ trap cleanup EXIT
   # Build the base command
   cmd="CUDA_VISIBLE_DEVICES=0 python examples/maniskill/main_eval.py"
   cmd="$cmd --args.host $host"
+  cmd="$cmd --args.port $port"
   cmd="$cmd --args.env_id $env_id"
   cmd="$cmd --args.num_evals $num_evals"
   cmd="$cmd --args.video_out_path $video_out_path"
@@ -124,7 +130,7 @@ env_pid=$!
 
   # Run policy server in background
   CUDA_VISIBLE_DEVICES=1 \
-    uv run scripts/serve_policy.py policy:checkpoint \
+    uv run scripts/serve_policy.py --port=$port policy:checkpoint \
       --policy.config=$policy_config \
       --policy.dir=$policy_checkpoint_dir &
 

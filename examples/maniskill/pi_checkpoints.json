@@ -1,5 +1,53 @@
 {
     "policy_checkpoints": {
+        "stack_v2_200_2000": {
+            "config": "pi0_maniskill_stack_v2_200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_200_pd_joint_pos_lora/20251113-042337-pi0_maniskill_stack_v2_200_pd_joint_pos_lora/2000"
+        },
+        "stack_v2_200_4000": {
+            "config": "pi0_maniskill_stack_v2_200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_200_pd_joint_pos_lora/20251113-042337-pi0_maniskill_stack_v2_200_pd_joint_pos_lora/4000"
+        },
+        "stack_v2_200_6000": {
+            "config": "pi0_maniskill_stack_v2_200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_200_pd_joint_pos_lora/20251113-042337-pi0_maniskill_stack_v2_200_pd_joint_pos_lora/6000"
+        },
+        "stack_v2_200_10000": {
+            "config": "pi0_maniskill_stack_v2_200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_200_pd_joint_pos_lora/20251113-042337-pi0_maniskill_stack_v2_200_pd_joint_pos_lora/10000"
+        },
+        "stack_v2_200_18000": {
+            "config": "pi0_maniskill_stack_v2_200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_200_pd_joint_pos_lora/20251113-042337-pi0_maniskill_stack_v2_200_pd_joint_pos_lora/18000"
+        },
+        "stack_v2_50_2000": {
+            "config": "pi0_maniskill_stack_v2_50_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_50_pd_joint_pos_lora/20251113-003039-pi0_maniskill_stack_v2_50_pd_joint_pos_lora/2000"
+        },
+        "stack_v2_50_4000": {
+            "config": "pi0_maniskill_stack_v2_50_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_50_pd_joint_pos_lora/20251113-003039-pi0_maniskill_stack_v2_50_pd_joint_pos_lora/4000"
+        },
+        "stack_v2_50_6000": {
+            "config": "pi0_maniskill_stack_v2_50_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_50_pd_joint_pos_lora/20251113-003039-pi0_maniskill_stack_v2_50_pd_joint_pos_lora/6000"
+        },
+        "stack_v2_50_10000": {
+            "config": "pi0_maniskill_stack_v2_50_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_50_pd_joint_pos_lora/20251113-003039-pi0_maniskill_stack_v2_50_pd_joint_pos_lora/10000"
+        },
+        "stack_v2_50_18000": {
+            "config": "pi0_maniskill_stack_v2_50_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack_v2_50_pd_joint_pos_lora/20251113-003039-pi0_maniskill_stack_v2_50_pd_joint_pos_lora/18000"
+        },
+        "stack200_4000": {
+            "config": "pi0_maniskill_stack200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack200_pd_joint_pos_lora/20251031-222720-4gpu/4000"
+        },
+        "stack200_8000": {
+            "config": "pi0_maniskill_stack200_pd_joint_pos_lora",
+            "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack200_pd_joint_pos_lora/20251031-222720-4gpu/8000"
+        },
         "stack_2000": {
             "config": "pi0_maniskill_stack400_pd_joint_pos_lora",
             "ckpt": "/n/fs/tom-project/papers/openpi/checkpoints/pi0_maniskill_stack400_pd_joint_pos_lora/20251102-013718-4gpu/2000"

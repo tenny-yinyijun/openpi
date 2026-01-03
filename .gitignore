@@ -5,6 +5,7 @@ checkpoints/
 data/
 slurm_outputs/
 wandb/
+examples/maniskill/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -171,3 +172,6 @@ cython_debug/
 
 # Temporary files
 * copy.*
+*.mp4
+*.png
+*.txt

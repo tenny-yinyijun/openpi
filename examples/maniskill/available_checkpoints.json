@@ -13,6 +13,30 @@
         "stack-test": {
             "obs_type": "three_view_vertical",
             "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/20251101_125703_single_maniskill_frameskip3/ckpt_000050000.pt"
+        },
+        "stack-bigdata": {
+            "obs_type": "three_view_vertical",
+            "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/maniskill_stack/20251106_190658_maniskill_bigdata/ckpt_000050000.pt"
+        },
+        "stack-baddata": {
+            "obs_type": "three_view_vertical",
+            "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/maniskill_stack/20251106_191026_maniskill_baddata/ckpt_000050000.pt"
+        },
+        "stack-bigdata-v2": {
+            "obs_type": "three_view_vertical",
+            "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/maniskill_stack/20251108_192103_maniskill_bigdata_resume/ckpt_000030000.pt"
+        },
+        "stack-baddata-v2": {
+            "obs_type": "three_view_vertical",
+            "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/maniskill_stack/20251108_100729_maniskill_baddata_resume/ckpt_000030000.pt"
+        },
+        "stack-all-ft-test": {
+            "obs_type": "three_view_vertical",
+            "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/20251103_134448_single_maniskill_frameskip3-all_rollouts-finetune/ckpt_000055000.pt"
+        },
+        "stack-all-test": {
+            "obs_type": "three_view_vertical",
+            "ckpt": "/n/fs/tom-project/video_models/ac_video_model_uq/checkpoints/20251103_112435_single_maniskill_frameskip3-all_rollouts/ckpt_000065000.pt"
         }
     },
     "available_seeds": {
