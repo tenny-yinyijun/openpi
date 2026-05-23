@@ -19,6 +19,18 @@ class EnvMode(enum.Enum):
     DROID = "droid"
     DROID05 = "droid05"
     LIBERO = "libero"
+    # RoboArena DROID baselines served from local checkpoints.
+    DROID_PI0 = "droid_pi0"
+    DROID_PI0_FAST = "droid_pi0_fast"
+    DROID_PI05 = "droid_pi05"
+    DROID_PALIGEMMA_BINNING = "droid_paligemma_binning"
+    DROID_PALIGEMMA_DIFFUSION = "droid_paligemma_diffusion"
+    DROID_PALIGEMMA_FAST = "droid_paligemma_fast"
+    DROID_PALIGEMMA_FAST_SPECIALIST = "droid_paligemma_fast_specialist"
+    DROID_PALIGEMMA_VQ = "droid_paligemma_vq"
+
+
+_ROBOARENA_WEIGHTS_ROOT = "/n/fs/irom-testing/multitest/data/roboarena/model_weights"
 
 
 @dataclasses.dataclass
@@ -77,6 +89,38 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.LIBERO: Checkpoint(
         config="pi05_libero",
         dir="gs://openpi-assets/checkpoints/pi05_libero",
+    ),
+    EnvMode.DROID_PI0: Checkpoint(
+        config="pi0_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/pi0_droid",
+    ),
+    EnvMode.DROID_PI0_FAST: Checkpoint(
+        config="pi0_fast_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/pi0_fast_droid",
+    ),
+    EnvMode.DROID_PI05: Checkpoint(
+        config="pi05_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/pi05_droid",
+    ),
+    EnvMode.DROID_PALIGEMMA_BINNING: Checkpoint(
+        config="paligemma_binning_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/paligemma_binning_droid",
+    ),
+    EnvMode.DROID_PALIGEMMA_DIFFUSION: Checkpoint(
+        config="paligemma_diffusion_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/paligemma_diffusion_droid",
+    ),
+    EnvMode.DROID_PALIGEMMA_FAST: Checkpoint(
+        config="paligemma_fast_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/paligemma_fast_droid",
+    ),
+    EnvMode.DROID_PALIGEMMA_FAST_SPECIALIST: Checkpoint(
+        config="paligemma_fast_specialist_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/paligemma_fast_specialist_droid",
+    ),
+    EnvMode.DROID_PALIGEMMA_VQ: Checkpoint(
+        config="paligemma_vq_droid",
+        dir=f"{_ROBOARENA_WEIGHTS_ROOT}/paligemma_vq_droid",
     ),
 }
 

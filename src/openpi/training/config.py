@@ -591,7 +591,7 @@ _CONFIGS = [
     #
     TrainConfig(
         name="pi0_droid",
-        model=pi0_config.Pi0Config(action_horizon=10),
+        model=pi0_config.Pi0Config(action_horizon=15),
         data=SimpleDataConfig(
             assets=AssetsConfig(asset_id="droid"),
             data_transforms=lambda model: _transforms.Group(
