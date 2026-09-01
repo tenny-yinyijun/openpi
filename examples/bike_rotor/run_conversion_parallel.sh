@@ -5,6 +5,7 @@
 #
 # Usage: bash examples/bike_rotor/run_conversion_parallel.sh [REPO_ID] [NUM_SHARDS] [EXTRA convert flags...]
 #   e.g. bash examples/bike_rotor/run_conversion_parallel.sh tri/bike_rotor_cartesian 32
+#   another task: ... tri/breakfast_table_cartesian 32 --task BimanualSetUpBreakfastTable
 set -euo pipefail
 
 REPO_ID=${1:-tri/bike_rotor_cartesian}

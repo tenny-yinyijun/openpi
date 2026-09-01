@@ -1,4 +1,4 @@
-"""Compute openpi normalization stats for the bike-rotor configs directly from the raw
+"""Compute openpi normalization stats for the TRI/LBM bimanual configs directly from the raw
 LBM lowdim -- no video decode needed (fast, and avoids a local ffmpeg/torchcodec dep).
 
 This is equivalent to `scripts/compute_norm_stats.py` for these configs: our data
@@ -11,8 +11,14 @@ same; pi0 uses z-score, pi05 uses quantile -- both read from the same file):
     assets/pi0_bike_rotor/tri/bike_rotor_cartesian/norm_stats.json
     assets/pi05_bike_rotor/tri/bike_rotor_cartesian/norm_stats.json
 
+Stats are per *task*: --task, --repo-id and --configs must be changed together, since the
+file is keyed by (config asset dir, repo_id) and read back by that config's data pipeline.
+
 Usage:
     uv run examples/bike_rotor/compute_norm_stats_from_raw.py
+    uv run examples/bike_rotor/compute_norm_stats_from_raw.py \
+        --task BimanualSetUpBreakfastTable --repo-id tri/breakfast_table_cartesian \
+        --configs pi05_breakfast_table
 """
 
 import dataclasses
@@ -31,6 +37,7 @@ import openpi.training.config as _config
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from convert_bike_rotor_to_lerobot import DEFAULT_RAW_ROOT
+from convert_bike_rotor_to_lerobot import TASK
 from convert_bike_rotor_to_lerobot import is_successful
 from convert_bike_rotor_to_lerobot import list_teleop_episodes
 from convert_bike_rotor_to_lerobot import load_lowdim
@@ -39,6 +46,7 @@ from convert_bike_rotor_to_lerobot import load_lowdim
 @dataclasses.dataclass
 class Args:
     raw_root: str = DEFAULT_RAW_ROOT
+    task: str = TASK
     repo_id: str = "tri/bike_rotor_cartesian"
     configs: tuple[str, ...] = ("pi0_bike_rotor", "pi05_bike_rotor")
     teleop_only: bool = True
@@ -47,12 +55,12 @@ class Args:
 
 
 def main(args: Args):
-    eps = list_teleop_episodes(args.raw_root, teleop_only=args.teleop_only)
+    eps = list_teleop_episodes(args.raw_root, teleop_only=args.teleop_only, task=args.task)
     if args.successful_only:
         eps = [e for e in eps if is_successful(e)]
     if args.limit:
         eps = eps[: args.limit]
-    print(f"Computing norm stats over {len(eps)} episodes")
+    print(f"Computing norm stats for {args.task} over {len(eps)} episodes")
 
     stats = {"state": normalize.RunningStats(), "actions": normalize.RunningStats()}
     for ep in tqdm.tqdm(eps):

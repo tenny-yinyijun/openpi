@@ -1,16 +1,23 @@
-"""Convert the TRI/LBM BimanualBikeRotorInstall teleop demos to a LeRobot dataset for openpi.
+"""Convert TRI/LBM bimanual-Panda teleop demos to a LeRobot dataset for openpi.
+
+Written for ``BimanualBikeRotorInstall`` and generalized via ``--task``: every LBM task
+recorded on this rig shares the raw layout, the 6 camera views, the 41 lowdim keys, the 20-d
+action and the 16-d state, so the only task-specific input is the directory name (and hence
+which station(s) the episodes happen to sit under). Verified identical for
+``BimanualSetUpBreakfastTable`` (hersey) and ``BimanualCleanUpSpill`` (ruggles).
 
 Raw layout (a TRI/LBM task under cv_unified/videos)::
 
-    <root>/BimanualBikeRotorInstall/<station>/real/teleop/<batch>/episode_<N>/
+    <root>/<task>/<station>/real/teleop/<batch>/episode_<N>/
         rgb/{scene_left_0,scene_right_0,wrist_left_plus,wrist_right_plus,
              wrist_left_minus,wrist_right_minus}.mp4     # 6 cameras (variable native res)
         lowdim/<cam>.npz    # shared robot state/action dict (identical across the 6 npz)
         metadata.json       # language.prompt, num_frames, specific.metadata.is_successful, ...
 
-This is a **bimanual dual-Panda** (7-DoF x 2) setup at 10 fps. We keep only the 534
-`teleop` (human) demonstrations -- the `rollout` episodes are policy-eval trajectories
-(many unsuccessful) and are excluded from behavior-cloning fine-tuning.
+This is a **bimanual dual-Panda** (7-DoF x 2) setup at 10 fps. We keep only the `teleop`
+(human) demonstrations -- the `rollout` episodes are policy-eval trajectories (many
+unsuccessful) and are excluded from behavior-cloning fine-tuning. Episode counts: bike rotor
+534, breakfast table 341, clean spill 151.
 
 We store three of the six views, mapped to pi0's three image slots -- matching the exact
 views the tri_bike world model trained on:
@@ -36,6 +43,9 @@ Usage (run inside the openpi uv env)::
     uv run examples/bike_rotor/convert_bike_rotor_to_lerobot.py \
         --raw-root /home/vguizilini/workspace/data/predict2/data/cv_unified/videos/LBM \
         --repo-id tri/bike_rotor_cartesian
+    # another task on the same rig:
+    uv run examples/bike_rotor/convert_bike_rotor_to_lerobot.py \
+        --task BimanualSetUpBreakfastTable --repo-id tri/breakfast_table_cartesian
     # smoke test on a few episodes:
     uv run examples/bike_rotor/convert_bike_rotor_to_lerobot.py --repo-id tri/bike_rotor_smoke --limit 3
 """
@@ -52,7 +62,7 @@ import numpy as np
 import tqdm
 import tyro
 
-TASK = "BimanualBikeRotorInstall"
+TASK = "BimanualBikeRotorInstall"  # default --task; any sibling LBM task dir works
 DEFAULT_RAW_ROOT = "/home/vguizilini/workspace/data/predict2/data/cv_unified/videos/LBM"
 
 # Camera view -> pi0 image slot. These three views match the tri_bike world model.
@@ -76,6 +86,7 @@ RESIZE_H, RESIZE_W = 224, 224  # pi0 resizes images to 224 anyway; store at mode
 @dataclasses.dataclass
 class Args:
     repo_id: str
+    task: str = TASK                   # LBM task directory under --raw-root
     raw_root: str = DEFAULT_RAW_ROOT
     limit: int = 0                     # cap #episodes (0 = all); for smoke tests
     teleop_only: bool = True           # exclude policy-eval rollout episodes
@@ -107,11 +118,18 @@ def shard_repo_id(repo_id: str, shard_id: int, num_shards: int) -> str:
     return repo_id if num_shards <= 1 else f"{repo_id}_shard{shard_id:03d}of{num_shards:03d}"
 
 
-def list_teleop_episodes(raw_root: str, *, teleop_only: bool):
+def list_teleop_episodes(raw_root: str, *, teleop_only: bool, task: str = TASK):
+    """Episodes of one task across every station it was recorded at, sorted for shard stability.
+
+    The `*` after `task` is the station: bike rotor and clean spill are ruggles-only, breakfast
+    table is hersey (teleop) + hersey/milton (rollout), and nothing downstream cares which.
+    """
     modes = ("teleop",) if teleop_only else ("teleop", "rollout")
     eps = []
     for mode in modes:
-        eps += sorted(glob.glob(os.path.join(raw_root, TASK, "*", "real", mode, "*", "episode_*")))
+        eps += sorted(glob.glob(os.path.join(raw_root, task, "*", "real", mode, "*", "episode_*")))
+    if not eps:
+        raise SystemExit(f"no episodes under {os.path.join(raw_root, task)} -- check --task/--raw-root")
     return [e for e in eps if os.path.isdir(e)]
 
 
@@ -147,14 +165,15 @@ def load_lowdim(ep_dir: str):
     return state, actions
 
 
-def episode_prompt(ep_dir: str) -> str:
+def episode_prompt(ep_dir: str, task: str = TASK) -> str:
+    """The episode's own instruction. LBM ships 6 paraphrases; index 0 is the canonical one."""
     md = json.load(open(os.path.join(ep_dir, "metadata.json")))
     pr = md.get("language", {}).get("prompt")
     if isinstance(pr, list) and pr:
         return str(pr[0])
     if isinstance(pr, str) and pr:
         return pr
-    return str(md.get("language", {}).get("task", TASK))
+    return str(md.get("language", {}).get("task", task))
 
 
 def is_successful(ep_dir: str) -> bool:
@@ -188,14 +207,14 @@ def main(args: Args):
         image_writer_processes=5,
     )
 
-    eps = list_teleop_episodes(args.raw_root, teleop_only=args.teleop_only)
+    eps = list_teleop_episodes(args.raw_root, teleop_only=args.teleop_only, task=args.task)
     if args.successful_only:
         eps = [e for e in eps if is_successful(e)]
     if args.limit:
         eps = eps[: args.limit]
     if args.num_shards > 1:
         eps = eps[args.shard_id :: args.num_shards]
-    print(f"[shard {args.shard_id}/{args.num_shards}] converting {len(eps)} episodes -> {output_path} (vcodec={args.vcodec})")
+    print(f"[shard {args.shard_id}/{args.num_shards}] {args.task}: converting {len(eps)} episodes -> {output_path} (vcodec={args.vcodec})")
 
     written = skipped = 0
     for ep_dir in tqdm.tqdm(eps):
@@ -208,7 +227,7 @@ def main(args: Args):
             if T < 2:
                 skipped += 1
                 continue
-            prompt = episode_prompt(ep_dir)
+            prompt = episode_prompt(ep_dir, args.task)
             for t in range(T):
                 dataset.add_frame(
                     {

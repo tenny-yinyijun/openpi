@@ -171,11 +171,16 @@ def create_torch_dataset(
     # looks up episode_data_index by the raw episode index -> IndexError with
     # delta_timestamps. Instead we split at the FRAME level with a torch Subset keyed on
     # each frame's episode_index, which keeps lerobot's internal indexing fully consistent.
+    # lerobot picks torchcodec whenever it is importable, which fails at *decode* time on
+    # hosts without ffmpeg 4-6 shared libs (the docker image has them; a bare workstation may
+    # not). OPENPI_VIDEO_BACKEND=pyav uses PyAV's bundled ffmpeg instead. Unset = lerobot default.
+    video_backend = os.environ.get("OPENPI_VIDEO_BACKEND") or None
     dataset = lerobot_dataset.LeRobotDataset(
         data_config.repo_id,
         delta_timestamps={
             key: [t / dataset_meta.fps for t in range(action_horizon)] for key in data_config.action_sequence_keys
         },
+        video_backend=video_backend,
     )
 
     if data_config.prompt_from_task:
