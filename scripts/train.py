@@ -115,11 +115,13 @@ def init_train_state(
 
     train_state_shape = jax.eval_shape(init, init_rng)
     state_sharding = sharding.fsdp_sharding(train_state_shape, mesh, log=True)
+
     if resume:
         return train_state_shape, state_sharding
 
     partial_params = _load_weights_and_validate(config.weight_loader, train_state_shape.params.to_pure_dict())
     replicated_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
+
     # Initialize the train state and mix in the partial params.
     train_state = jax.jit(
         init,
@@ -189,6 +191,25 @@ def train_step(
     return new_state, info
 
 
+@at.typecheck
+def val_step(
+    config: _config.TrainConfig,
+    rng: at.KeyArrayLike,
+    state: training_utils.TrainState,
+    batch: tuple[_model.Observation, _model.Actions],
+) -> dict[str, at.Array]:
+    """Compute validation loss on a batch (no grad). Uses EMA params if available."""
+    params = state.ema_params if state.ema_params is not None else state.params
+    model = nnx.merge(state.model_def, params)
+    model.eval()
+
+    observation, actions = batch
+    # Fixed rng per step so the val loss is a low-variance, comparable-across-steps metric.
+    val_rng = jax.random.fold_in(rng, state.step)
+    chunked_loss = model.compute_loss(val_rng, observation, actions, train=False)
+    return {"val_loss": jnp.mean(chunked_loss)}
+
+
 def main(config: _config.TrainConfig):
     init_logging()
     logging.info(f"Running on: {platform.node()}")
@@ -219,10 +240,24 @@ def main(config: _config.TrainConfig):
         config,
         sharding=data_sharding,
         shuffle=True,
+        split="train" if config.val_fraction > 0 else None,
     )
     data_iter = iter(data_loader)
     batch = next(data_iter)
     logging.info(f"Initialized data loader:\n{training_utils.array_tree_to_info(batch)}")
+
+    # Optional held-out validation loader (episode-level split; see config.val_fraction).
+    val_data_iter = None
+    if config.val_fraction > 0:
+        val_loader = _data_loader.create_data_loader(
+            config,
+            sharding=data_sharding,
+            shuffle=True,
+            split="val",
+        )
+        val_data_iter = iter(val_loader)
+        logging.info(f"Initialized validation loader (val_fraction={config.val_fraction}).")
+
     # Log images from first batch to sanity check.
     images_to_log = [
         wandb.Image(np.concatenate([np.array(img[i]) for img in batch[0].images.values()], axis=1))
@@ -243,6 +278,14 @@ def main(config: _config.TrainConfig):
         out_shardings=(train_state_sharding, replicated_sharding),
         donate_argnums=(1,),
     )
+
+    pval_step = None
+    if val_data_iter is not None:
+        pval_step = jax.jit(
+            functools.partial(val_step, config),
+            in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
+            out_shardings=replicated_sharding,
+        )
 
     start_step = int(train_state.step)
     pbar = tqdm.tqdm(
@@ -265,6 +308,15 @@ def main(config: _config.TrainConfig):
             wandb.log(reduced_info, step=step)
             infos = []
         batch = next(data_iter)
+
+        if pval_step is not None and step % config.val_interval == 0 and step > start_step:
+            val_infos = []
+            for _ in range(config.num_val_batches):
+                with sharding.set_mesh(mesh):
+                    val_infos.append(pval_step(train_rng, train_state, next(val_data_iter)))
+            reduced_val = jax.device_get(jax.tree.map(jnp.mean, common_utils.stack_forest(val_infos)))
+            pbar.write(f"Step {step}: val_loss={reduced_val['val_loss']:.4f}")
+            wandb.log(reduced_val, step=step)
 
         if (step % config.save_interval == 0 and step > start_step) or step == config.num_train_steps - 1:
             _checkpoints.save_state(checkpoint_manager, train_state, data_loader, step)

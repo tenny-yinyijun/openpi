@@ -32,13 +32,13 @@ dependencies = [
     "wandb>=0.19.1",
     "filelock>=3.16.1",
     "beartype==0.19.0",
+    "chex==0.1.90",
     "treescope>=0.1.7",
     "transformers==4.53.2",
     "rich>=14.0.0",
     "polars>=1.30.0",
-    "tensorflow-datasets>=4.9.9",
-    "tensorflow>=2.15.0",
-    "tensorrt>=10.13.2.6",
+    # s3fs: the SageMaker path stages datasets/checkpoints through s3:// URLs (sagemaker/).
+    # h5py: the raw-episode readers in examples/{bike_rotor,libero,aloha_real,droid}.
     "s3fs>=2025.3.0",
     "h5py>=3.13.0",
 ]
@@ -58,9 +58,20 @@ dev = [
     "pynvml>=12.0.0",
 ]
 rlds = [
+    # NOTE: tensorflow-cpu 2.15.0 only ships cp311 wheels on PyPI.
+    # Use `uv venv --python 3.11` before `uv sync --group rlds`.
     "dlimp",
     "tensorflow-cpu==2.15.0",
     "tensorflow-datasets==4.9.9",
+]
+# The tfds/RLDS conversion path for maniskill + libero (bash_scripts/dataset/,
+# examples/libero/convert_libero_data_to_lerobot.py). A GROUP, not a base dependency: GPU
+# `tensorflow` and the `rlds` group's `tensorflow-cpu` are two wheels for the same import,
+# so having both in one environment is unresolvable. Pick one group per venv.
+# (`tensorrt` used to sit here too; nothing in the tree imports it, so it is dropped.)
+maniskill = [
+    "tensorflow>=2.15.0",
+    "tensorflow-datasets>=4.9.9",
 ]
 
 [tool.uv]

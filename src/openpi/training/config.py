@@ -18,11 +18,13 @@ import openpi.models.pi0_config as pi0_config
 import openpi.models.pi0_fast as pi0_fast
 import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
+import openpi.policies.bike_rotor_policy as bike_rotor_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
+import openpi.training.misc.polaris_config as polaris_config
 import openpi.training.misc.roboarena_config as roboarena_config
 import openpi.training.optimizer as _optimizer
 import openpi.training.weight_loaders as weight_loaders
@@ -93,8 +95,8 @@ class DataConfig:
     rlds_data_dir: str | None = None
     # Action space for DROID dataset.
     action_space: droid_rlds_dataset.DroidActionSpace | None = None
-    # Path to the data filter file for DROID dataset
-    filter_dict_path: str | None = None
+    # List of datasets to sample from: name, version, weight, and optionally filter_dict_path
+    datasets: Sequence[droid_rlds_dataset.RLDSDataset] = ()
 
 
 class GroupFactory(Protocol):
@@ -366,8 +368,16 @@ class RLDSDroidDataConfig(DataConfigFactory):
     # Filtering options. Can pass a path to a dictionary that maps episodes to timestep ranges
     # to tuples denoting ranges of time steps to keep (start, end). Episodes are uniquely identified with
     # f"{recording_folderpath}--{file_path}", both of which are present in the RLDS episode metadata.
-    # Path to the filter dictionary file.
-    filter_dict_path: str | None = "gs://openpi-assets/droid/droid_sample_ranges_v1_0_1.json"
+
+    # List of datasets to sample from: name, version, weight, and optionally filter_dict_path
+    datasets: Sequence[droid_rlds_dataset.RLDSDataset] = (
+        droid_rlds_dataset.RLDSDataset(
+            name="droid",
+            version="1.0.1",
+            weight=1.0,
+            filter_dict_path="gs://openpi-assets/droid/droid_sample_ranges_v1_0_1.json",
+        ),
+    )
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
@@ -410,7 +420,7 @@ class RLDSDroidDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
             rlds_data_dir=self.rlds_data_dir,
             action_space=self.action_space,
-            filter_dict_path=self.filter_dict_path,
+            datasets=self.datasets,
         )
 
 
@@ -443,6 +453,53 @@ class LeRobotDROIDDataConfig(DataConfigFactory):
             inputs=[droid_policy.DroidInputs(model_type=model_config.model_type)],
             outputs=[droid_policy.DroidOutputs()],
         )
+        model_transforms = ModelTransformFactory()(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class LeRobotBikeRotorDataConfig(DataConfigFactory):
+    """Data config for a TRI/LBM bimanual dual-Panda LeRobot dataset.
+
+    State = 16-d measured joint state; actions = 20-d cartesian xyzrot6g (absolute).
+    Build the LeRobot dataset with examples/bike_rotor/convert_bike_rotor_to_lerobot.py.
+
+    Task-agnostic despite the name: every LBM task on this rig shares the 3 stored views, the
+    16-d state and the 20-d action, so bike rotor / breakfast table / clean spill differ only
+    in ``repo_id`` (which also selects the per-task norm stats) and the per-episode prompt.
+    """
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # Remap the LeRobot dataset keys to the keys BikeRotorInputs expects.
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/image": "observation.images.base",
+                        "observation/left_wrist_image": "observation.images.left_wrist",
+                        "observation/right_wrist_image": "observation.images.right_wrist",
+                        "observation/state": "observation.state",
+                        "actions": "actions",
+                        "prompt": "prompt",
+                    }
+                )
+            ]
+        )
+
+        # Robot-specific transforms (applied in training AND inference). Actions stay
+        # absolute -- no DeltaActions transform (state is joint-space, action is task-space).
+        data_transforms = _transforms.Group(
+            inputs=[bike_rotor_policy.BikeRotorInputs(model_type=model_config.model_type)],
+            outputs=[bike_rotor_policy.BikeRotorOutputs()],
+        )
+
         model_transforms = ModelTransformFactory()(model_config)
 
         return dataclasses.replace(
@@ -507,6 +564,14 @@ class TrainConfig:
     save_interval: int = 1000
     # If set, any existing checkpoints matching step % keep_period == 0 will not be deleted.
     keep_period: int | None = 5000
+
+    # Fraction of episodes held out (episode-level, deterministic) for a validation set.
+    # 0 disables validation entirely (original behavior). e.g. 0.05 = 5% of episodes.
+    val_fraction: float = 0.0
+    # How often (in steps) to evaluate and log validation loss. Only used if val_fraction>0.
+    val_interval: int = 1000
+    # Number of val batches to average per evaluation.
+    num_val_batches: int = 20
 
     # If true, will overwrite the checkpoint directory if it already exists.
     overwrite: bool = False
@@ -954,7 +1019,7 @@ _CONFIGS = [
     # Fine-tuning Aloha configs.
     #
     # This is a test config that is used to illustate how train on a custom LeRobot dataset.
-    # For instuctions on how to convert and train on your own Aloha dataset see examples/aloha_real/README.md
+    # For instructions on how to convert and train on your own Aloha dataset see examples/aloha_real/README.md
     TrainConfig(
         name="pi0_aloha_pen_uncap",
         model=pi0_config.Pi0Config(),
@@ -1013,6 +1078,156 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         num_train_steps=20_000,
         batch_size=64,
+    ),
+    #
+    # Fine-tuning TRI/LBM BimanualBikeRotorInstall configs (bimanual dual-Panda).
+    # State = 16-d measured joint positions+grippers; actions = 20-d cartesian xyzrot6g.
+    # Build the dataset with examples/bike_rotor/convert_bike_rotor_to_lerobot.py, then
+    # `uv run scripts/compute_norm_stats.py --config-name pi0_bike_rotor` before training.
+    #
+    TrainConfig(
+        name="pi0_bike_rotor",
+        # Full fine-tuning of pi0-base (no freeze_filter, no LoRA variant).
+        model=pi0_config.Pi0Config(action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/bike_rotor_cartesian",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        # Hold out 5% of episodes for validation-loss logging (every val_interval steps).
+        val_fraction=0.05,
+        val_interval=1000,
+    ),
+    TrainConfig(
+        name="pi05_bike_rotor",
+        # Full fine-tuning of pi05-base. pi05 uses quantile normalization automatically.
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/bike_rotor_cartesian",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        # Hold out 5% of episodes for validation-loss logging (every val_interval steps).
+        val_fraction=0.05,
+        val_interval=1000,
+    ),
+    #
+    # Policy DAgger: continue pi05_bike_rotor_v5 on the corrections collected against it,
+    # mixed 50/50 with demonstrations. Both decisions DAGGER_PI05.md S6 flags as
+    # non-mechanical are made explicitly here.
+    TrainConfig(
+        name="pi05_bike_rotor_dagger",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/bike_rotor_dagger_mix50",
+            # Pin norm stats to the ORIGINAL asset. asset_id defaults to repo_id, so a new
+            # repo_id looks for stats that do not exist -- and computing fresh quantiles
+            # from a few thousand correction-heavy frames would move pi0.5's normalization
+            # out from under an already-trained action head.
+            # assets_dir must be given too: it defaults to the assets dir keyed by THIS
+            # config's name (assets/pi05_bike_rotor_dagger/), which does not exist, and
+            # _load_norm_stats swallows the FileNotFoundError and returns None -- i.e. it
+            # would train UNNORMALIZED with only an info-level log to say so.
+            assets=AssetsConfig(assets_dir="assets/pi05_bike_rotor",
+                                asset_id="tri/bike_rotor_cartesian"),
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        # DAgger CONTINUES the policy the data was collected against -- not pi05_base like
+        # every other bike config. Starting from base would discard exactly the behaviour
+        # these corrections were recorded to repair.
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            "/home/tenny.yin/workspace/open-world/data/dagger/policies/pi05_bike_rotor_v5/params"),
+        # ~3.6k frames at batch 32 is ~112 steps/epoch. Short run, low LR, short warmup:
+        # the 1k-step default warmup would be half the run.
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=100,
+            peak_lr=1e-5,
+            decay_steps=2_000,
+            decay_lr=1e-6,
+        ),
+        num_train_steps=2_000,
+        batch_size=32,
+        save_interval=500,
+        val_fraction=0.05,
+        val_interval=250,
+    ),
+    #
+    # Two more tasks from the same rig, deliberately identical to pi05_bike_rotor apart from
+    # the dataset: same 3 views, same 16-d state, same 20-d action, same schedule. Convert with
+    # `--task <LBM task dir>` and compute norm stats per task (they are keyed by repo_id).
+    # Note the epoch counts differ a lot at a fixed 30k x 32: bike rotor 519.8k frames ~ 1.8
+    # epochs, breakfast table 278.7k ~ 3.4, clean spill 54.2k ~ 17.7. Kept identical for
+    # comparability; watch clean spill's val loss for overfitting rather than assuming 30k.
+    #
+    # A checkpoint here is 42.7 GB (params + EMA + Adam state). The default 1000-step cadence
+    # costs ~14 min of stalled training per save on the NFS home (~50 MB/s) and leaves ~300 GB
+    # behind, so save 6x less often and keep every 10k step. Not needed on SageMaker, where
+    # checkpoints go to S3 -- hence the difference from pi05_bike_rotor.
+    TrainConfig(
+        name="pi05_breakfast_table",  # BimanualSetUpBreakfastTable, 341 teleop eps (hersey)
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/breakfast_table_cartesian",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        val_fraction=0.05,
+        val_interval=1000,
+        save_interval=5000,
+        keep_period=10_000,
+    ),
+    TrainConfig(
+        name="pi05_clean_spill",  # BimanualCleanUpSpill, 151 teleop eps (ruggles, same as bike)
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/clean_spill_cartesian",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        val_fraction=0.05,
+        val_interval=1000,
+        save_interval=5000,
+        keep_period=10_000,
+    ),
+    #
+    # Policy DAgger on clean spill: continue pi05_clean_spill_v2_3999 on the corrections
+    # collected against it, mixed 50/50 with demonstrations. Same recipe as
+    # pi05_bike_rotor_dagger -- see that config for why each non-mechanical choice is made.
+    TrainConfig(
+        name="pi05_clean_spill_dagger",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/clean_spill_dagger_mix50",
+            # Pin norm stats to the ORIGINAL asset, as on bike: a new repo_id would look for
+            # stats that do not exist, and assets_dir defaults to this config's own name
+            # (assets/pi05_clean_spill_dagger/), which _load_norm_stats would swallow as a
+            # FileNotFoundError and train UNNORMALIZED.
+            assets=AssetsConfig(assets_dir="assets/pi05_clean_spill",
+                                asset_id="tri/clean_spill_cartesian"),
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        # CONTINUE the policy the corrections were collected against, not pi05_base.
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            "/home/tenny.yin/workspace/open-world/data/dagger/policies/pi05_clean_spill_v2_3999/params"),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=100,
+            peak_lr=1e-5,
+            decay_steps=2_000,
+            decay_lr=1e-6,
+        ),
+        num_train_steps=2_000,
+        batch_size=32,
+        save_interval=500,
+        val_fraction=0.05,
+        val_interval=250,
     ),
     #
     # Fine-tuning DROID configs.
@@ -1154,10 +1369,9 @@ _CONFIGS = [
         exp_name="debug_pi05",
         wandb_enabled=False,
     ),
-    #
-    # RoboArena configs.
-    #
+    # RoboArena & PolaRiS configs.
     *roboarena_config.get_roboarena_configs(),
+    *polaris_config.get_polaris_configs(),
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):
