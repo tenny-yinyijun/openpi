@@ -612,6 +612,14 @@ class TrainConfig:
             raise ValueError("Cannot resume and overwrite at the same time.")
 
 
+# The base policies the *_dagger configs continue from, as collected by open-world's
+# `scripts/dagger.py`. RELATIVE ON PURPOSE: this repo is the `external/openpi` submodule of
+# open-world and train.py is always launched from here (that is what `dagger.py finetune`
+# prints), so this resolves without hardcoding one machine's home. CheckpointWeightLoader
+# passes local paths through `maybe_download`, which raises FileNotFoundError on a miss --
+# a wrong cwd fails loudly rather than training from the wrong weights.
+_DAGGER_POLICIES = "../../data/dagger/policies/"
+
 # Use `get_config` if you need to get a config by name in your code.
 _CONFIGS = [
     #
@@ -1139,8 +1147,7 @@ _CONFIGS = [
         # DAgger CONTINUES the policy the data was collected against -- not pi05_base like
         # every other bike config. Starting from base would discard exactly the behaviour
         # these corrections were recorded to repair.
-        weight_loader=weight_loaders.CheckpointWeightLoader(
-            "/home/tenny.yin/workspace/open-world/data/dagger/policies/pi05_bike_rotor_v5/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader(_DAGGER_POLICIES + "pi05_bike_rotor_v5/params"),
         # ~3.6k frames at batch 32 is ~112 steps/epoch. Short run, low LR, short warmup:
         # the 1k-step default warmup would be half the run.
         lr_schedule=_optimizer.CosineDecaySchedule(
@@ -1215,8 +1222,38 @@ _CONFIGS = [
             base_config=DataConfig(prompt_from_task=True),
         ),
         # CONTINUE the policy the corrections were collected against, not pi05_base.
+        weight_loader=weight_loaders.CheckpointWeightLoader(_DAGGER_POLICIES + "pi05_clean_spill_v2_3999/params"),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=100,
+            peak_lr=1e-5,
+            decay_steps=2_000,
+            decay_lr=1e-6,
+        ),
+        num_train_steps=2_000,
+        batch_size=32,
+        save_interval=500,
+        val_fraction=0.05,
+        val_interval=250,
+    ),
+    #
+    # Policy DAgger on breakfast table. Same recipe again; see pi05_bike_rotor_dagger for the
+    # reasoning behind the pinned assets and the non-base weight_loader.
+    #
+    # The step budget is copied from the other two rather than sized on the data, because no
+    # breakfast round is collected yet: 2k x 32 was right for their ~3.6k-frame mix50 rounds
+    # (~112 steps/epoch, so ~18 epochs). A much larger round wants proportionally more steps
+    # -- read the val loss rather than assuming 2k transfers.
+    TrainConfig(
+        name="pi05_breakfast_table_dagger",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=16),
+        data=LeRobotBikeRotorDataConfig(
+            repo_id="tri/breakfast_table_dagger_mix50",
+            assets=AssetsConfig(assets_dir="assets/pi05_breakfast_table",
+                                asset_id="tri/breakfast_table_cartesian"),
+            base_config=DataConfig(prompt_from_task=True),
+        ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            "/home/tenny.yin/workspace/open-world/data/dagger/policies/pi05_clean_spill_v2_3999/params"),
+            _DAGGER_POLICIES + "pi05_breakfast_table_v1_29999/params"),
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=100,
             peak_lr=1e-5,
