@@ -5,5 +5,4 @@ trajectory_logs/
 # belongs to another repo, and this fork's remote is not the place to
 # republish it.
 reference_from_sibling/
-reference_from_dgx/
 __pycache__/
