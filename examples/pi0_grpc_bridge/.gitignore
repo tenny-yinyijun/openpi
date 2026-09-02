@@ -1,0 +1,8 @@
+# Rollout trajectory logs (--log-path): per-run robot data, not source.
+trajectory_logs/
+# Source copied in from the sibling open-world project on dgx-02 purely as
+# a reading reference for action_blend.py's port. Deliberately NOT tracked:
+# it belongs to another repo, and this fork's remote is not the place to
+# republish it.
+reference_from_dgx/
+__pycache__/
